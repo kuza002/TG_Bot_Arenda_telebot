@@ -1,15 +1,19 @@
+import logging
+
 import Entities
 from Database import Database
 import Handlers
 from Entities import Ad
 from Markups import Markup
-from utils import edit_or_send_message
+from utils import edit_or_send_message, log_event
 
 users_data = {}
 db = Database()
 
 
 def tenant_menu(bot, message):
+    log_event('Entered to tenant_menu', message)
+
     user_id = message.chat.id
     filter = db.get_filter(user_id)
 
@@ -35,6 +39,7 @@ def tenant_menu(bot, message):
 
 
 def create_filter(bot, callback):
+    log_event('Entered to create_filter', callback)
     user_id = callback.message.chat.id
     db.delete_filter(user_id)
 
@@ -60,6 +65,7 @@ def create_filter(bot, callback):
 
 
 def checkbox_district_process(bot, callback):
+    log_event('Entered to tenant_menu', callback)
     user_id = callback.message.chat.id
     callback_data = callback.data.split('_')[1]
 
@@ -95,6 +101,7 @@ def checkbox_district_process(bot, callback):
 
 
 def ask_min_price(bot, message):
+    log_event('Entered to tenant_menu', message)
     def save_min_price(msg):
         try:
             price = int(msg.text)
@@ -125,6 +132,7 @@ def ask_min_price(bot, message):
 
 
 def ask_max_price(bot, message):
+    log_event('Entered to ask_max_price', message)
     def save_max_price(msg):
         try:
             max_price = int(msg.text)
@@ -164,6 +172,7 @@ def ask_max_price(bot, message):
     bot.register_next_step_handler(message, save_max_price)
 
 def save_filter(bot, message):
+    log_event('Entered to save_filter', message)
     user_id = message.chat.id
     filter_data = users_data[user_id]
 
@@ -190,6 +199,7 @@ def save_filter(bot, message):
     tenant_menu(bot, message)
 
 def find_by_filter(bot, callback):
+    log_event('Entered to find_by_filter', callback)
     filter = db.get_filter(callback.message.chat.id)
     if filter is None:
         filter = Entities.Filter(callback.message.chat.id, Ad.ALL_DISTRICTS, 0, 1000000000)
@@ -221,6 +231,7 @@ def find_by_filter(bot, callback):
     edit_or_send_message(bot, callback.message, text, markup, parse_mode='Markdown')
 
 def go_landlord(bot, callback):
+    log_event('Entered to go_landlord', callback)
     user = db.get_user(callback.message.chat.id)
     db.delete_user(user.id)
 

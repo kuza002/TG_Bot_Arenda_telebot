@@ -4,11 +4,12 @@ import Entities
 from Handlers.landlord import landlord_menu
 from Handlers.tenant import tenant_menu
 from Markups import Markup
-from utils import edit_or_send_message
+from utils import edit_or_send_message, log_event
 
 db = Database()
 
 def handle_start(bot, message):
+    log_event('Entered to handle_start', message)
     user = db.get_user(message.chat.id)
 
     if user is None:
@@ -33,6 +34,7 @@ def handle_start(bot, message):
             tenant_menu(bot, message)
 
 def register_user(bot, callback):
+    log_event('Entered to register_user', callback)
     role = callback.data.split('_')[1]
     user = Entities.User.from_callback(callback, role)
     db.add_user(user)
@@ -44,6 +46,8 @@ def sub(bot, callback):
     sub_step = callback.data.split('_')[1]
     back = 'go_home'
     markup = None
+
+    log_event(f'Sub_step: {sub_step}', callback)
 
     if sub_step == 'price':
         text = """
@@ -116,6 +120,7 @@ def sub(bot, callback):
     edit_or_send_message(bot, callback.message, text, markup)
 
 def go_home(bot, callback):
+    log_event('Entered to go_home', callback)
     handle_start(bot, callback.message)
 
 def register_common_handlers(bot):

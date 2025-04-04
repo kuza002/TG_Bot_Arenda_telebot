@@ -2,13 +2,14 @@ from Database import Database
 from Entities import Ad
 import Handlers
 from Markups import Markup
-from utils import edit_or_send_message
+from utils import edit_or_send_message, log_event
 
 db = Database()
 user_data = {}
 
 
 def landlord_menu(bot, message):
+    log_event('Entered to landlord_menu', message)
     user_id = message.chat.id
     ad = db.get_ad(user_id)
 
@@ -34,6 +35,7 @@ def landlord_menu(bot, message):
 
 
 def district_choice(bot, callback):
+    log_event('Entered to district_choice', callback)
     ad = db.get_ad(callback.message.chat.id)
 
     if ad is not None:
@@ -57,6 +59,7 @@ def district_choice(bot, callback):
 
 
 def price_choice(bot, callback):
+    log_event('Entered to price_choice', callback)
     def save_price(message):
         try:
             price = int(message.text)
@@ -90,6 +93,7 @@ def price_choice(bot, callback):
 
 
 def address_choice(bot, message):
+    log_event('Entered to address_choice', message)
     def save_address(message):
         user_id = message.chat.id
         ad_data = user_data[user_id]
@@ -123,6 +127,7 @@ def address_choice(bot, message):
 
 
 def delete_ad(bot, callback):
+    log_event('Entered to delete_ad', callback)
     db.delete_ad(callback.message.chat.id)
 
     text = """
@@ -135,6 +140,7 @@ def delete_ad(bot, callback):
 
 
 def go_tenant(bot, callback):
+    log_event('Entered to go_tenant', callback)
     user = db.get_user(callback.message.chat.id)
     db.delete_user(user.id)
 
