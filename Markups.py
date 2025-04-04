@@ -23,7 +23,7 @@ class Markup:
         del_btn = types.InlineKeyboardButton("Удалить объявление",
                                              callback_data='delete_ad')
         change_role_btn = types.InlineKeyboardButton("Сменить роль",
-                                                 callback_data='change_role')
+                                                 callback_data='go_tenant')
         sub_btn = types.InlineKeyboardButton('Подписка', callback_data='sub_price')
 
         markup.row(create_btn)
@@ -68,11 +68,11 @@ class Markup:
     def tenant_markup():
         markup = types.InlineKeyboardMarkup()
         find_btn = types.InlineKeyboardButton('Найти жильё',
-                                              callback_data='find_tenant')
+                                              callback_data='find_by_filter')
         filter_btn = types.InlineKeyboardButton("Изменить фильтр",
-                                                callback_data='tenant_filter')
+                                                callback_data='create_filter')
         change_role_btn = types.InlineKeyboardButton("Сменить роль",
-                                                     callback_data='change_role')
+                                                     callback_data='go_landlord')
         sub_btn = types.InlineKeyboardButton('Подписка',
                                              callback_data='sub_price')
 
@@ -81,3 +81,27 @@ class Markup:
         markup.row(change_role_btn, sub_btn)
 
         return markup
+
+    @staticmethod
+    def district_checkbox_markup(user_data, user_id):
+        keyboard = types.InlineKeyboardMarkup()
+        button_row = []
+        for district in Entities.Ad.ALL_DISTRICTS:
+            # Если район уже выбран, добавляем галочку
+            if district in user_data['selected_districts']:
+                button_text = f"✅ {district}"
+            else:
+                button_text = district
+
+            btn = types.InlineKeyboardButton(button_text,
+                                             callback_data=f"checkbox_{district}")
+            button_row.append(btn)
+
+            if len(button_row) == 2:
+                keyboard.row(*button_row)
+                button_row = []
+
+        # Кнопка "Готово" для завершения выбора
+        keyboard.add(types.InlineKeyboardButton("🚀 Готово", callback_data="checkbox_done"))
+
+        return keyboard

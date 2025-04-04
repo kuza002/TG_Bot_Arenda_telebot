@@ -1,6 +1,6 @@
 from Database import Database
 from Entities import Ad
-from Handlers.tenant import tenant_menu
+import Handlers
 from Markups import Markup
 
 
@@ -67,8 +67,6 @@ def address_choice(bot, message):
     bot.send_message(message.chat.id, 'Укажите точный адрес жилья:')
     bot.register_next_step_handler(message, save_address)
 
-def go_home(bot, callback):
-    landlord_menu(bot, callback.message)
 
 
 def delete_ad(bot, callback):
@@ -79,7 +77,13 @@ def delete_ad(bot, callback):
 
 
 def go_tenant(bot, callback):
-    tenant_menu(bot, callback.message)
+    user = db.get_user(callback.message.chat.id)
+    db.delete_user(user.id)
+
+    user.role = 'tenant'
+    db.add_user(user)
+
+    Handlers.tenant.tenant_menu(bot, callback.message)
 
 
 def register_landlord_handlers(bot):
@@ -92,11 +96,8 @@ def register_landlord_handlers(bot):
     (bot.callback_query_handler(lambda clb: clb.data in Ad.ALL_DISTRICTS)
      (lambda message: price_choice(bot, message)))
 
-    (bot.callback_query_handler(lambda clb: clb.data == 'go_home')
-     (lambda message: go_home(bot, message)))
-
     (bot.callback_query_handler(lambda clb: clb.data == 'delete_ad')
      (lambda message: delete_ad(bot, message)))
 
-    (bot.callback_query_handler(lambda clb: clb.data == 'change_role')
+    (bot.callback_query_handler(lambda clb: clb.data == 'go_tenant')
      (lambda message: go_tenant(bot, message)))

@@ -1,6 +1,7 @@
 import sqlite3
-from typing import Optional
+from typing import Optional, List
 import Entities
+from Entities import Ad
 
 
 class Database:
@@ -26,7 +27,17 @@ class Database:
                           (user_id INTEGER PRIMARY KEY, username TEXT, role TEXT)''')
 
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS ads
-                          (user_id INTEGER PRIMARY KEY, district TEXT, price REAL, address TEXT)''')
+                          (user_id INTEGER PRIMARY KEY, 
+                          district TEXT, price REAL, address TEXT)''')
+
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS filters
+                            (filter_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER,
+                            district TEXT,
+                            min_price INTEGER,
+                            max_price INTEGER,
+                            FOREIGN KEY (user_id) REFERENCES users(user_id));
+                            ''')
 
 
         self.connection.commit()
@@ -55,6 +66,15 @@ class Database:
             return user
 
         return None
+
+    def delete_user(self, user_id: int) -> bool:
+        try:
+            self.cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            self.connection.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"DB Error: {e}")
+            return False
 
     # For ads
 
@@ -91,3 +111,67 @@ class Database:
         except sqlite3.Error as e:
             print(f"DB Error: {e}")
             return False
+
+    def add_filter(self, filter: Entities.Filter) -> bool:
+        """Добавляет объявление в БД."""
+        try:
+            for district in filter.districts:
+                self.cursor.execute(
+                    "INSERT INTO filters (user_id, district, min_price, max_price) VALUES (?, ?, ?, ?)",
+                    (filter.user_id, district, filter.min_price, filter.max_price)
+                )
+            self.connection.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"DB Error: {e}")
+            return False
+
+    def get_filter(self, user_id: int) -> Optional[Entities.Filter]:
+        try:
+            self.cursor.execute("SELECT * FROM filters WHERE user_id = ?", (user_id,))
+            output = self.cursor.fetchall()
+
+            if output:
+                districts = []
+                for row in output:
+                    districts.append(row[2])
+
+                filter = Entities.Filter(output[0][1], districts, output[0][3], output[0][4])
+                return filter
+            else:
+                return None
+
+        except sqlite3.Error as e:
+            print(f"DB Error: {e}")
+            return False
+
+    def delete_filter(self, user_id: int) -> bool:
+        try:
+            self.cursor.execute("DELETE FROM filters WHERE user_id = ?",
+                                (user_id,))
+            self.connection.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"DB Error: {e}")
+            return False
+
+    def find_ads_by_filter(self, filter: Entities.Filter) -> list[Ad] | None:
+        try:
+            self.cursor.execute('''
+            SELECT *
+            FROM ads
+            WHERE 
+                price BETWEEN ? AND ? 
+                AND district IN ({});
+            '''.format(', '.join(['?']*len(filter.districts))),
+                [filter.min_price, filter.max_price]+filter.districts
+                                )
+            out = self.cursor.fetchall()[:10]
+            ads = [Entities.Ad(i[0], i[1], i[2], i[3]) for i in out]
+
+            return ads
+        except sqlite3.Error as e:
+            print(f"DB Error: {e}")
+            return None
+
+

@@ -3,6 +3,7 @@ from telebot import types
 from Database import Database
 import Entities
 from Handlers.landlord import landlord_menu
+from Handlers.tenant import tenant_menu
 from Markups import Markup
 
 db = Database()
@@ -21,9 +22,10 @@ def handle_start(bot, message):
                      "Хотите сдать или найти квартиру?",
                      reply_markup=markup)
     else:
-
         if user.role == 'landlord':
             landlord_menu(bot, message)
+        elif user.role == 'tenant':
+            tenant_menu(bot, message)
 
 
 
@@ -77,6 +79,10 @@ def sub(bot, callback):
     bot.send_message(callback.message.chat.id, text, reply_markup=markup)
 
 
+def go_home(bot, callback):
+    handle_start(bot, callback.message)
+
+
 def register_common_handlers(bot):
     bot.message_handler(commands=['start'])(lambda msg: handle_start(bot, msg))
 
@@ -85,3 +91,6 @@ def register_common_handlers(bot):
 
     (bot.callback_query_handler(func=lambda callback: callback.data.startswith('sub'))
      (lambda call: sub(bot, call)))
+
+    (bot.callback_query_handler(lambda clb: clb.data == 'go_home')
+     (lambda message: go_home(bot, message)))
