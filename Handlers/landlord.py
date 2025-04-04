@@ -2,77 +2,135 @@ from Database import Database
 from Entities import Ad
 import Handlers
 from Markups import Markup
-
+from utils import edit_or_send_message
 
 db = Database()
 user_data = {}
 
 
 def landlord_menu(bot, message):
-    ad = db.get_ad(message.chat.id)
+    user_id = message.chat.id
+    ad = db.get_ad(user_id)
 
-    text = 'У вас пока нет объявлений.'
-    if ad is not None:
-        text = (f'У вас уже есть одно объявление:\n\n'
-                f'|{ad.district} | {ad.price} р. | {ad.address} |\n\n'
-                f'Чтобы создать больше объявлений оформите платную подписку.')
+    if ad is None:
+        text = """
+📭 *У вас пока нет объявлений*
+
+Создайте первое объявление и начните получать предложения от арендаторов!
+"""
+    else:
+        text = f"""
+🏠 *Ваше текущее объявление:*
+
+📍 Район: *{ad.district}*
+💵 Цена: *{ad.price} ₽/мес*
+🏡 Адрес: *{ad.address}*
+
+✨ Для создания дополнительных объявлений оформите *Премиум подписку*
+"""
 
     markup = Markup.landlord_markup()
-    bot.send_message(message.chat.id, text, reply_markup=markup)
+    edit_or_send_message(bot, message, text, markup, parse_mode='Markdown')
 
 
 def district_choice(bot, callback):
     ad = db.get_ad(callback.message.chat.id)
 
     if ad is not None:
+        text = """
+⚠️ *Лимит объявлений исчерпан*
+
+У вас уже есть активное объявление:
+1. Удалите текущее объявление
+2. Оформите *Премиум подписку* для добавления новых
+"""
         markup = Markup.go_home_markup()
-        bot.send_message(callback.message.chat.id,
-                         "У вас уже есть одно объявление.\n"
-                         "Удалите старое или оформите платную подписку.",
-                         reply_markup=markup)
+        edit_or_send_message(bot, callback.message, text, markup, parse_mode='Markdown')
     else:
+        text = """
+🏙 *Выберите район*
+
+Укажите район, где находится ваша квартира:
+"""
         markup = Markup.district_markup()
-        bot.send_message(callback.message.chat.id,
-                         'Выберите район в котором хотите сдавать квартиру:',
-                         reply_markup=markup)
+        edit_or_send_message(bot, callback.message, text, markup, parse_mode='Markdown')
+
 
 def price_choice(bot, callback):
     def save_price(message):
         try:
-            price = int(message.text)  # Пытаемся преобразовать в число
-            user_data[message.chat.id]['price'] = price  # Сохраняем в словарь
-            address_choice(bot, message)
-        except ValueError:  # Если введено не число
-            bot.send_message(message.chat.id, "Это не число! Попробуйте снова.")
-            price_choice(bot, callback)  # Запрашиваем повторный ввод
+            price = int(message.text)
+            if price <= 0:
+                raise ValueError
 
+            user_data[message.chat.id] = {
+                'district': callback.data,
+                'price': price
+            }
+            address_choice(bot, message)
+        except ValueError:
+            error_text = """
+❌ *Некорректная сумма*
+
+Пожалуйста, введите корректную цену аренды (только цифры):
+Пример: *35000*
+"""
+            edit_or_send_message(bot, message, error_text, parse_mode='Markdown')
+            bot.register_next_step_handler(message, save_price)
+
+    text = """
+💵 *Укажите стоимость аренды*
+
+Введите месячную стоимость аренды (только цифры):
+Пример: *35000*
+"""
     user_data[callback.message.chat.id] = {'district': callback.data}
-    bot.send_message(callback.message.chat.id, "Введите цену аренды (только цифры):")
+    edit_or_send_message(bot, callback.message, text, parse_mode='Markdown')
     bot.register_next_step_handler(callback.message, save_price)
 
 
 def address_choice(bot, message):
     def save_address(message):
         user_id = message.chat.id
+        ad_data = user_data[user_id]
 
-        ad = Ad(user_id,
-                user_data[user_id]['district'],
-                user_data[user_id]['price'],
-                message.text)
+        ad = Ad(
+            user_id,
+            ad_data['district'],
+            ad_data['price'],
+            message.text
+        )
 
         db.add_ad(ad)
-        bot.send_message(message.chat.id, "Вы успешно создали объявление!")
+
+        success_text = f"""
+🎉 *Объявление создано!*
+
+Теперь ваша квартира в районе *{ad.district}* 
+по цене *{ad.price} ₽/мес* будет видна арендаторам.
+"""
+        edit_or_send_message(bot, message, success_text, parse_mode='Markdown')
         landlord_menu(bot, message)
 
-    bot.send_message(message.chat.id, 'Укажите точный адрес жилья:')
-    bot.register_next_step_handler(message, save_address)
+    text = """
+🏡 *Укажите точный адрес*
 
+Напишите полный адрес квартиры (улица, дом, квартира):
+Пример: *ул. Примерная, д. 10, кв. 25*
+"""
+    edit_or_send_message(bot, message, text, parse_mode='Markdown')
+    bot.register_next_step_handler(message, save_address)
 
 
 def delete_ad(bot, callback):
     db.delete_ad(callback.message.chat.id)
 
-    bot.send_message(callback.message.chat.id, 'Объявление удалено.')
+    text = """
+🗑 *Объявление удалено*
+
+Вы можете создать новое объявление когда захотите.
+"""
+    edit_or_send_message(bot, callback.message, text, parse_mode='Markdown')
     landlord_menu(bot, callback.message)
 
 
